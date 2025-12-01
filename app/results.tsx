@@ -1,10 +1,10 @@
 // @ts-nocheck
-import React, { useState } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, FlatList, SafeAreaView } from 'react-native';
-import { ArrowLeft, Home, RotateCcw, User } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { ClientConfig } from '@/constants/ClientConfig';
 import FragranceCard from '@/components/FragranceCard';
+import { ClientConfig } from '@/constants/ClientConfig';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, Home, RotateCcw, User } from 'lucide-react-native';
+import React from 'react';
+import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ResultsScreen() {
   const router = useRouter();

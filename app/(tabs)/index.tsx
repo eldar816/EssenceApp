@@ -1,10 +1,10 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, Modal, TextInput, Alert } from 'react-native';
-import { Sparkles, ChevronRight, Search, Settings, Lock } from 'lucide-react-native';
-import { useRouter, useFocusEffect } from 'expo-router'; 
 import { ClientConfig } from '@/constants/ClientConfig';
 import { SettingsService } from '@/services/Database';
+import { useFocusEffect, useRouter } from 'expo-router';
+import { ChevronRight, Lock, Search, Settings, Sparkles } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
   const router = useRouter();

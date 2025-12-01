@@ -1,10 +1,10 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Text, View, TouchableOpacity, ScrollView, SafeAreaView, ActivityIndicator, FlatList, TextInput, Modal, Alert } from 'react-native';
-import { ArrowLeft, CheckCircle, Circle } from 'lucide-react-native';
-import { useRouter, useLocalSearchParams } from 'expo-router';
 import { ClientConfig } from '@/constants/ClientConfig';
-import { FragranceService, SettingsService, LeadsService } from '@/services/Database';
+import { FragranceService, LeadsService, SessionStore, SettingsService } from '@/services/Database';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { ArrowLeft, CheckCircle } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function QuizScreen() {
   const router = useRouter();
@@ -23,9 +23,12 @@ export default function QuizScreen() {
   const [contactInfo, setContactInfo] = useState({ firstName: '', lastName: '', email: '', phone: '' });
   const [errors, setErrors] = useState<any>({}); 
   
-  // Parse session user if it exists
-  const [sessionUser, setSessionUser] = useState(params.user ? JSON.parse(params.user) : null);
-
+  const [sessionUser, setSessionUser] = useState<any>(SessionStore.getUser());
+  
+  useEffect(() => {
+    const unsubscribe = SessionStore.subscribe((u) => setSessionUser(u));
+    return () => unsubscribe();
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
@@ -78,31 +81,20 @@ export default function QuizScreen() {
     if (currentQuestionIndex < currentQuiz.questions.length - 1) {
       setCurrentQuestionIndex(currentQuestionIndex + 1);
     } else {
-      // Quiz Finished
-      // If info collection ON and NO session, show form
-      if (settings.collectUserInfo && !sessionUser) {
+      if (settings.collectUserInfo && !SessionStore.getUser()) {
         setShowContactForm(true);
       } else {
-        // If session exists (or collection off), finish immediately
-        finishQuiz(answersState, sessionUser);
+        finishQuiz(answersState);
       }
     }
   };
 
-  // --- VALIDATION ---
-  const validateName = (name: string, fieldLabel: string) => {
-    if (!name || !name.trim()) return `${fieldLabel} is required.`;
-    if (name.length > 25) return `${fieldLabel} is too long (max 25 chars).`;
-    const lettersOnly = /^[a-zA-Z\s]+$/;
-    if (!lettersOnly.test(name)) return `${fieldLabel} should contain letters only.`;
-    return null;
-  };
+  const validateName = (name: string, fieldLabel: string) => { if (!name || !name.trim()) return `${fieldLabel} is required.`; if (name.length > 25) return `${fieldLabel} is too long (max 25 chars).`; return /^[a-zA-Z\s]+$/.test(name) ? null : `${fieldLabel} should contain letters only.`; };
   const validateEmail = (email: string) => { const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/; return re.test(email) ? null : "Please enter a valid email address."; };
   const validatePhoneUS = (phone: string) => { const re = /^(\+?1[-.\s]?)?(\(?\d{3}\)?[-.\s]?)?\d{3}[-.\s]?\d{4}$/; return re.test(phone) ? null : "Invalid US phone format."; };
 
   const submitContactForm = async () => {
-    const newErrors: any = {};
-    let isValid = true;
+    const newErrors: any = {}; let isValid = true;
     const fNameError = validateName(contactInfo.firstName, "First Name");
     if (fNameError) { newErrors.firstName = fNameError; isValid = false; }
     const lNameError = validateName(contactInfo.lastName, "Last Name");
@@ -124,10 +116,8 @@ export default function QuizScreen() {
         phone: contactInfo.phone.trim() 
       };
       
-      // Correctly call identify from LeadsService
-      const user = await LeadsService.identify(leadData); 
-
-      finishQuiz(quizAnswers, user);
+      await LeadsService.identify(leadData); 
+      finishQuiz(quizAnswers);
     } catch (e) {
       console.error(e);
       Alert.alert("Error", "Could not save information. Please try again.");
@@ -135,7 +125,7 @@ export default function QuizScreen() {
     }
   };
 
-  const finishQuiz = async (finalAnswers: any, finalUser: any | null = null) => {
+  const finishQuiz = async (finalAnswers: any) => {
     setIsCalculating(true);
     const recommendations = await FragranceService.getRecommendations(finalAnswers);
     setIsCalculating(false);
@@ -143,114 +133,16 @@ export default function QuizScreen() {
     router.push({
       pathname: "/results",
       params: { 
-          data: JSON.stringify(recommendations),
-          user: finalUser && finalUser.id ? JSON.stringify(finalUser) : null
+          data: JSON.stringify(recommendations)
       }
     });
   };
 
   if (isLoading) return <View style={[styles.container, styles.center]}><ActivityIndicator size="large" color={ClientConfig.colors.secondary} /></View>;
-
-  // Selection Screen (If Multiple)
-  if (!currentQuiz && activeQuizzes.length > 0) {
-    return (
-      <View style={styles.container}>
-        <SafeAreaView style={{flex: 1}}>
-          <View style={styles.header}>
-            <TouchableOpacity onPress={() => router.back()}><ArrowLeft size={24} color={ClientConfig.colors.accent} /></TouchableOpacity>
-            <Text style={styles.headerTitle}>Select a Quiz</Text>
-            <View style={{width:24}}/>
-          </View>
-          <FlatList
-            data={activeQuizzes}
-            keyExtractor={item => item.id}
-            contentContainerStyle={{padding: 20}}
-            renderItem={({item}) => {
-              const isAvailable = item.questions && item.questions.length > 0;
-              return (
-                <TouchableOpacity 
-                  style={[styles.quizCard, !isAvailable && styles.quizCardDisabled]} 
-                  onPress={() => isAvailable ? handleStartQuiz(item) : null}
-                  activeOpacity={isAvailable ? 0.7 : 1}
-                >
-                  <View style={{flex: 1}}>
-                    <View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: 5}}>
-                        <Text style={[styles.quizTitle, !isAvailable && {color:'#888', marginBottom:0}]}>{item.title}</Text>
-                        {!isAvailable && <View style={styles.unavailableBadge}><Text style={styles.unavailableText}>UNAVAILABLE</Text></View>}
-                    </View>
-                    <Text style={styles.quizDesc}>{item.description || "No description"}</Text>
-                    <Text style={styles.quizMeta}>{item.questions ? item.questions.length : 0} Questions</Text>
-                  </View>
-                  {isAvailable && <ArrowLeft size={20} color={ClientConfig.colors.secondary} style={{transform:[{rotate:'180deg'}]}} />}
-                </TouchableOpacity>
-              );
-            }}
-          />
-        </SafeAreaView>
-      </View>
-    );
-  }
-
-  // Contact Form
-  if (showContactForm) {
-    return (
-      <View style={styles.container}>
-        <SafeAreaView style={{flex:1, padding: 20, justifyContent: 'center'}}>
-          <View style={styles.formCard}>
-            <Text style={styles.formTitle}>Almost There!</Text>
-            <Text style={styles.formDesc}>Enter your details to see your personalized scent recommendation.</Text>
-            
-            <View>
-              <TextInput style={[styles.input, errors.firstName && styles.inputError]} placeholder="First Name" value={contactInfo.firstName} onChangeText={t => { setContactInfo({...contactInfo, firstName: t}); setErrors({...errors, firstName: null}); }} maxLength={25} />
-              {errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}
-            </View>
-            <View>
-              <TextInput style={[styles.input, errors.lastName && styles.inputError]} placeholder="Last Name" value={contactInfo.lastName} onChangeText={t => { setContactInfo({...contactInfo, lastName: t}); setErrors({...errors, lastName: null}); }} maxLength={25} />
-              {errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}
-            </View>
-            <View>
-              <TextInput style={[styles.input, errors.email && styles.inputError]} placeholder="Email Address" value={contactInfo.email} keyboardType="email-address" autoCapitalize="none" onChangeText={t => { setContactInfo({...contactInfo, email: t}); setErrors({...errors, email: null}); }} />
-              {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-            </View>
-            <View>
-              <TextInput style={[styles.input, errors.phone && styles.inputError]} placeholder="Phone Number (Optional)" value={contactInfo.phone} keyboardType="phone-pad" onChangeText={t => { setContactInfo({...contactInfo, phone: t}); setErrors({...errors, phone: null}); }} />
-              {errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}
-            </View>
-
-            <TouchableOpacity onPress={submitContactForm} style={styles.submitBtn}>
-              <Text style={styles.submitBtnText}>See My Results</Text>
-            </TouchableOpacity>
-            
-            {/* Back Button */}
-            <TouchableOpacity onPress={() => setShowContactForm(false)} style={{marginTop: 15, alignItems: 'center'}}>
-               <Text style={{color: '#666'}}>Back to Quiz</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-        {isCalculating && (
-          <View style={[styles.center, {position:'absolute', top:0, bottom:0, left:0, right:0, backgroundColor:'rgba(0,0,0,0.7)'}]}>
-             <ActivityIndicator size="large" color="#FFF" />
-          </View>
-        )}
-      </View>
-    );
-  }
-
+  if (!currentQuiz && activeQuizzes.length > 0) { return (<View style={styles.container}><SafeAreaView style={{flex: 1}}><View style={styles.header}><TouchableOpacity onPress={() => router.back()}><ArrowLeft size={24} color={ClientConfig.colors.accent} /></TouchableOpacity><Text style={styles.headerTitle}>Select a Quiz</Text><View style={{width:24}}/></View><FlatList data={activeQuizzes} keyExtractor={item => item.id} contentContainerStyle={{padding: 20}} renderItem={({item}) => { const isAvailable = item.questions && item.questions.length > 0; return (<TouchableOpacity style={[styles.quizCard, !isAvailable && styles.quizCardDisabled]} onPress={() => isAvailable ? handleStartQuiz(item) : null} activeOpacity={isAvailable ? 0.7 : 1}><View style={{flex: 1}}><View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginBottom: 5}}><Text style={[styles.quizTitle, !isAvailable && {color:'#888', marginBottom:0}]}>{item.title}</Text>{!isAvailable && <View style={styles.unavailableBadge}><Text style={styles.unavailableText}>UNAVAILABLE</Text></View>}</View><Text style={styles.quizDesc}>{item.description || "No description"}</Text><Text style={styles.quizMeta}>{item.questions ? item.questions.length : 0} Questions</Text></View>{isAvailable && <ArrowLeft size={20} color={ClientConfig.colors.secondary} style={{transform:[{rotate:'180deg'}]}} />}</TouchableOpacity>); }} /></SafeAreaView></View>); }
+  if (showContactForm) { return (<View style={styles.container}><SafeAreaView style={{flex:1, padding: 20, justifyContent: 'center'}}><View style={styles.formCard}><Text style={styles.formTitle}>Almost There!</Text><Text style={styles.formDesc}>Enter your details to see your personalized scent recommendation.</Text><View><TextInput style={[styles.input, errors.firstName && styles.inputError]} placeholder="First Name" value={contactInfo.firstName} onChangeText={t => { setContactInfo({...contactInfo, firstName: t}); setErrors({...errors, firstName: null}); }} maxLength={25} />{errors.firstName && <Text style={styles.errorText}>{errors.firstName}</Text>}</View><View><TextInput style={[styles.input, errors.lastName && styles.inputError]} placeholder="Last Name" value={contactInfo.lastName} onChangeText={t => { setContactInfo({...contactInfo, lastName: t}); setErrors({...errors, lastName: null}); }} maxLength={25} />{errors.lastName && <Text style={styles.errorText}>{errors.lastName}</Text>}</View><View><TextInput style={[styles.input, errors.email && styles.inputError]} placeholder="Email Address" value={contactInfo.email} keyboardType="email-address" autoCapitalize="none" onChangeText={t => { setContactInfo({...contactInfo, email: t}); setErrors({...errors, email: null}); }} />{errors.email && <Text style={styles.errorText}>{errors.email}</Text>}</View><View><TextInput style={[styles.input, errors.phone && styles.inputError]} placeholder="Phone Number (Optional)" value={contactInfo.phone} keyboardType="phone-pad" onChangeText={t => { setContactInfo({...contactInfo, phone: t}); setErrors({...errors, phone: null}); }} />{errors.phone && <Text style={styles.errorText}>{errors.phone}</Text>}</View><TouchableOpacity onPress={submitContactForm} style={styles.submitBtn}><Text style={styles.submitBtnText}>See My Results</Text></TouchableOpacity><TouchableOpacity onPress={() => setShowContactForm(false)} style={{marginTop: 15, alignItems: 'center'}}><Text style={{color: '#666'}}>Back to Quiz</Text></TouchableOpacity></View></SafeAreaView>{isCalculating && (<View style={[styles.center, {position:'absolute', top:0, bottom:0, left:0, right:0, backgroundColor:'rgba(0,0,0,0.7)'}]}><ActivityIndicator size="large" color="#FFF" /></View>)}</View>); }
   if (!currentQuiz) return <View style={[styles.container, styles.center]}><Text style={{color:'#FFF'}}>No active quiz.</Text></View>;
-
-  if (!currentQuiz.questions || currentQuiz.questions.length === 0) {
-    return (
-        <View style={[styles.container, {justifyContent:'center', alignItems:'center', padding: 20}]}>
-          <Text style={{color:'#FFF', fontSize: 18, marginBottom: 10, textAlign:'center'}}>This quiz is under construction.</Text>
-          <TouchableOpacity onPress={() => {
-             if (activeQuizzes.length > 1) setCurrentQuiz(null);
-             else router.back();
-          }} style={{padding:10, backgroundColor:ClientConfig.colors.secondary, borderRadius:8}}>
-              <Text style={{color:'#FFF'}}>Go Back</Text>
-          </TouchableOpacity>
-        </View>
-    );
-  }
+  if (!currentQuiz.questions || currentQuiz.questions.length === 0) { return (<View style={[styles.container, {justifyContent:'center', alignItems:'center', padding: 20}]}><Text style={{color:'#FFF', fontSize: 18, marginBottom: 10, textAlign:'center'}}>This quiz is under construction.</Text><TouchableOpacity onPress={() => { if (activeQuizzes.length > 1) setCurrentQuiz(null); else router.back(); }} style={{padding:10, backgroundColor:ClientConfig.colors.secondary, borderRadius:8}}><Text style={{color:'#FFF'}}>Go Back</Text></TouchableOpacity></View>); }
 
   const question = currentQuiz.questions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100;
@@ -259,9 +151,7 @@ export default function QuizScreen() {
     <View style={styles.container}>
       <SafeAreaView style={{flex: 1}}>
         <View style={styles.header}>
-          <TouchableOpacity onPress={() => { if (activeQuizzes.length > 1) setCurrentQuiz(null); else router.back(); }}>
-            <ArrowLeft size={24} color={ClientConfig.colors.accent} />
-          </TouchableOpacity>
+          <TouchableOpacity onPress={() => { if (activeQuizzes.length > 1) setCurrentQuiz(null); else router.back(); }}><ArrowLeft size={24} color={ClientConfig.colors.accent} /></TouchableOpacity>
           <View style={styles.progressBarBg}><View style={[styles.progressBarFill, { width: `${progress}%` }]} /></View>
         </View>
         <View style={styles.quizContent}>
@@ -269,17 +159,10 @@ export default function QuizScreen() {
           <ScrollView showsVerticalScrollIndicator={false}>
             {question.options.map((option: any) => {
               const isSelected = question.type === 'multiple' ? (quizAnswers[question.id] || []).includes(option.value) : quizAnswers[question.id] === option.value;
-              return (
-                <TouchableOpacity key={option.value} style={[styles.optionButton, isSelected && styles.optionSelected]} onPress={() => handleAnswer(option.value)}>
-                  <Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option.label}</Text>
-                  {isSelected && <CheckCircle size={20} color={ClientConfig.colors.primary} />}
-                </TouchableOpacity>
-              );
+              return (<TouchableOpacity key={option.value} style={[styles.optionButton, isSelected && styles.optionSelected]} onPress={() => handleAnswer(option.value)}><Text style={[styles.optionText, isSelected && styles.optionTextSelected]}>{option.label}</Text>{isSelected && <CheckCircle size={20} color={ClientConfig.colors.primary} />}</TouchableOpacity>);
             })}
           </ScrollView>
-          {question.type === 'multiple' && (quizAnswers[question.id] || []).length > 0 && (
-            <TouchableOpacity style={styles.continueButton} onPress={() => nextStep()}><Text style={styles.continueButtonText}>Continue</Text></TouchableOpacity>
-          )}
+          {question.type === 'multiple' && (quizAnswers[question.id] || []).length > 0 && (<TouchableOpacity style={styles.continueButton} onPress={() => nextStep()}><Text style={styles.continueButtonText}>Continue</Text></TouchableOpacity>)}
         </View>
       </SafeAreaView>
     </View>
@@ -308,8 +191,6 @@ const styles = StyleSheet.create({
   quizMeta: { fontSize: 12, color: ClientConfig.colors.secondary, fontWeight: 'bold' },
   unavailableBadge: { backgroundColor: '#666', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, marginLeft: 10 },
   unavailableText: { color: '#FFF', fontSize: 10, fontWeight: 'bold' },
-  
-  // Contact Form
   formCard: { backgroundColor: '#FFF', padding: 25, borderRadius: 20 },
   formTitle: { fontSize: 24, fontWeight: 'bold', color: ClientConfig.colors.primary, marginBottom: 10, textAlign: 'center' },
   formDesc: { fontSize: 14, color: '#666', marginBottom: 20, textAlign: 'center' },

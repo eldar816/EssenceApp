@@ -1,6 +1,6 @@
 // @ts-nocheck
+import { addDoc, arrayRemove, arrayUnion, collection, deleteDoc, doc, getDoc, getDocs, query, setDoc, updateDoc, where, writeBatch } from 'firebase/firestore';
 import { db } from './firebaseConfig';
-import { collection, getDocs, doc, getDoc, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 // --- INTERFACES ---
 export interface Fragrance {
@@ -63,11 +63,17 @@ const COLLECTION_LEADS = 'leads';
 export const SessionStore = {
   user: null as Lead | null,
   listeners: [] as Function[],
+  
+  // Set user and notify all listening components
   setUser: (u: Lead | null) => {
     SessionStore.user = u;
     SessionStore.listeners.forEach(l => l(u));
   },
+  
+  // Get current user
   getUser: () => SessionStore.user,
+  
+  // Components subscribe to changes here
   subscribe: (cb: Function) => {
     SessionStore.listeners.push(cb);
     return () => { SessionStore.listeners = SessionStore.listeners.filter(l => l !== cb); }
@@ -222,16 +228,22 @@ export const MetadataService = {
       return DEFAULT_METADATA;
     }
   },
+
   addItem: async (category: string, item: string) => {
     const docRef = doc(db, COLLECTION_METADATA, category);
     const snap = await getDoc(docRef);
-    let values = snap.exists() ? (snap.data().values || []) : [];
+    let values = [];
+    if (snap.exists()) {
+      values = snap.data().values || [];
+    }
     if (!values.includes(item)) {
-      values.push(item); values.sort();
+      values.push(item);
+      values.sort();
       await setDoc(docRef, { values }, { merge: true });
     }
     return values;
   },
+
   removeItem: async (category: string, item: string) => {
     const docRef = doc(db, COLLECTION_METADATA, category);
     const snap = await getDoc(docRef);
@@ -243,6 +255,7 @@ export const MetadataService = {
     }
     return [];
   },
+
   seed: async () => {
     for (const [key, values] of Object.entries(DEFAULT_METADATA)) {
       await setDoc(doc(db, COLLECTION_METADATA, key), { values });

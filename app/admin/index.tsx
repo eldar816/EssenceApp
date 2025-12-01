@@ -1,11 +1,11 @@
 // @ts-nocheck
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, FlatList, TouchableOpacity, TextInput, Modal, SafeAreaView, ActivityIndicator, ScrollView, Alert, KeyboardAvoidingView, Platform, Switch } from 'react-native';
-import { ClientConfig } from '@/constants/ClientConfig';
-import { FragranceService, MetadataService, SettingsService, LeadsService, AnalyticsService } from '@/services/Database';
-import { Plus, Trash2, ArrowLeft, Edit2, X, CheckSquare, Square, Search, Eye, ArrowUp, ArrowDown, Save, Power, User, Mail, Phone, Settings as SettingsIcon, Clock, Lock, BarChart2, Box, MapPin, Ticket, Heart } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
 import SearchableMultiSelect from '@/components/SearchableMultiSelect';
+import { ClientConfig } from '@/constants/ClientConfig';
+import { AnalyticsService, FragranceService, LeadsService, MetadataService, SettingsService } from '@/services/Database';
+import { useRouter } from 'expo-router';
+import { ArrowDown, ArrowLeft, ArrowUp, CheckSquare, Clock, Edit2, Eye, Heart, Lock, Mail, MapPin, Phone, Plus, Power, Search, Square, Ticket, Trash2, User, X } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Modal, Platform, SafeAreaView, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function AdminDashboard() {
   const router = useRouter();
@@ -24,7 +24,6 @@ export default function AdminDashboard() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isSelectionMode, setIsSelectionMode] = useState(false);
 
-  // Modals
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isQuizListModalOpen, setIsQuizListModalOpen] = useState(false);
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
@@ -32,11 +31,9 @@ export default function AdminDashboard() {
   const [isLeadModalOpen, setIsLeadModalOpen] = useState(false);
   const [isLeadDetailOpen, setIsLeadDetailOpen] = useState(false);
   
-  // --- LEAD DETAIL STATE ---
   const [currentLead, setCurrentLead] = useState<any>(null);
   const [leadWishlistItems, setLeadWishlistItems] = useState<any[]>([]);
 
-  // --- FRAGRANCE FORM STATE ---
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newName, setNewName] = useState('');
   const [newVendor, setNewVendor] = useState<string[]>([]); 
@@ -51,7 +48,6 @@ export default function AdminDashboard() {
   const [newOccasion, setNewOccasion] = useState<string[]>([]);
   const [newPersonality, setNewPersonality] = useState<string[]>([]);
 
-  // --- QUIZ/PARAM STATE ---
   const [currentQuiz, setCurrentQuiz] = useState<any>(null);
   const [isReordering, setIsReordering] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<any>(null);
@@ -142,30 +138,20 @@ export default function AdminDashboard() {
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* HEADER */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()}><ArrowLeft size={24} color="#FFF" /></TouchableOpacity>
         <Text style={styles.title}>Admin Manager</Text>
         {isSelectionMode ? (
-          <TouchableOpacity onPress={handleBatchAction} style={styles.batchDeleteBtn}>
-            <Trash2 size={20} color="#FFF" />
-            <Text style={{color: '#FFF', fontWeight:'bold', marginLeft: 5}}>{selectedIds.length}</Text>
-          </TouchableOpacity>
+          <TouchableOpacity onPress={handleBatchAction} style={styles.batchDeleteBtn}><Trash2 size={20} color="#FFF" /><Text style={{color: '#FFF', fontWeight:'bold', marginLeft: 5}}>{selectedIds.length}</Text></TouchableOpacity>
         ) : <View style={{width: 24}} />}
       </View>
-
-      {/* TABS */}
       <View style={styles.tabs}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           {['inventory', 'analytics', 'parameters', 'quizzes', 'leads', 'settings'].map(t => (
-             <TouchableOpacity key={t} style={[styles.tab, activeTab === t && styles.activeTab]} onPress={() => setActiveTab(t as any)}>
-               <Text style={[styles.tabText, activeTab === t && styles.activeTabText, {textTransform:'capitalize'}]}>{t}</Text>
-             </TouchableOpacity>
+             <TouchableOpacity key={t} style={[styles.tab, activeTab === t && styles.activeTab]} onPress={() => setActiveTab(t as any)}><Text style={[styles.tabText, activeTab === t && styles.activeTabText, {textTransform:'capitalize'}]}>{t}</Text></TouchableOpacity>
           ))}
         </ScrollView>
       </View>
-
-      {/* SEARCH BAR */}
       {activeTab !== 'analytics' && activeTab !== 'settings' && (
         <View style={styles.searchContainer}>
           <Search size={20} color="#888" />
@@ -173,7 +159,6 @@ export default function AdminDashboard() {
           {adminSearch.length > 0 && <TouchableOpacity onPress={() => setAdminSearch('')}><X size={18} color="#888" /></TouchableOpacity>}
         </View>
       )}
-
       {loading ? (
         <View style={{flex: 1, justifyContent: 'center', alignItems: 'center'}}><ActivityIndicator size="large" color="#FFF" /></View>
       ) : activeTab === 'inventory' ? (
@@ -184,10 +169,7 @@ export default function AdminDashboard() {
             <TouchableOpacity style={[styles.row, selectedIds.includes(item.id) && styles.selectedRow, item.inStock === false && {opacity: 0.6}]} onLongPress={() => toggleSelection(item.id)} onPress={() => isSelectionMode ? toggleSelection(item.id) : null}>
               <View style={{flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1}}>
                 {isSelectionMode && (selectedIds.includes(item.id) ? <CheckSquare size={20} color={ClientConfig.colors.secondary} /> : <Square size={20} color="#666" />)}
-                <View>
-                    <Text style={styles.rowTitle}>{item.name} {item.inStock === false && <Text style={{color:'red', fontSize:12}}> (OOS)</Text>}</Text>
-                    <Text style={styles.rowSubtitle}>{item.vendor}</Text>
-                </View>
+                <View><Text style={styles.rowTitle}>{item.name} {item.inStock === false && <Text style={{color:'red', fontSize:12}}> (OOS)</Text>}</Text><Text style={styles.rowSubtitle}>{item.vendor}</Text></View>
               </View>
               {!isSelectionMode && (
                 <View style={styles.actionButtons}>
@@ -209,7 +191,6 @@ export default function AdminDashboard() {
       ) : activeTab === 'quizzes' ? (
         <><View style={styles.subHeader}><Text style={styles.sectionTitle}>Quizzes ({getFilteredQuizzes().length})</Text><TouchableOpacity onPress={() => setIsSelectionMode(!isSelectionMode)}><Text style={{color: isSelectionMode ? ClientConfig.colors.secondary : '#888'}}>{isSelectionMode ? 'Cancel' : 'Select Multiple'}</Text></TouchableOpacity></View><FlatList data={getFilteredQuizzes()} keyExtractor={item => item.id} renderItem={({item}) => (<TouchableOpacity style={[styles.row, selectedIds.includes(item.id) && styles.selectedRow]} onPress={() => isSelectionMode ? toggleSelection(item.id) : null}><View style={{flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1}}>{isSelectionMode && (selectedIds.includes(item.id) ? <CheckSquare size={20} color={ClientConfig.colors.secondary} /> : <Square size={20} color="#666" />)}<View style={{flex: 1}}><Text style={styles.rowTitle}>{item.title}</Text><Text style={styles.rowSubtitle}>{item.questions ? item.questions.length : 0} Questions • {item.active ? 'Active' : 'Inactive'}</Text></View></View>{!isSelectionMode && (<View style={styles.actionButtons}><TouchableOpacity onPress={() => toggleQuizActive(item)} style={styles.iconBtn}><Power size={18} color={item.active ? '#4CAF50' : '#666'} /></TouchableOpacity><TouchableOpacity onPress={() => handleEditQuiz(item)} style={styles.iconBtn}><Edit2 size={18} color={ClientConfig.colors.secondary} /></TouchableOpacity><TouchableOpacity onPress={() => { if(Platform.OS==='web' ? confirm("Delete quiz?") : Alert.alert("Delete", "Delete quiz?", [{text:"Cancel"},{text:"Delete", style:'destructive', onPress:async ()=>{ await FragranceService.deleteQuiz(item.id); loadAllData(); }}])) { if(Platform.OS==='web') { FragranceService.deleteQuiz(item.id).then(loadAllData); } } }} style={styles.iconBtn}><Trash2 size={18} color="red" /></TouchableOpacity></View>)}</TouchableOpacity>)}/></>
       ) : (
-        /* LEADS TAB */
         <FlatList 
             data={getFilteredLeads()}
             keyExtractor={item => item.id}
@@ -222,10 +203,7 @@ export default function AdminDashboard() {
                 <View style={{flexDirection: 'row', gap: 10, flex: 1}}>
                   {isSelectionMode && (
                     <View style={{marginTop: 4}}>
-                      {selectedIds.includes(item.id) 
-                        ? <CheckSquare size={20} color={ClientConfig.colors.secondary} /> 
-                        : <Square size={20} color="#666" />
-                      }
+                      {selectedIds.includes(item.id) ? <CheckSquare size={20} color={ClientConfig.colors.secondary} /> : <Square size={20} color="#666" />}
                     </View>
                   )}
                   <View style={{flex: 1}}>
@@ -250,16 +228,9 @@ export default function AdminDashboard() {
                 </View>
                 {!isSelectionMode && (
                   <View style={styles.actionButtons}>
-                    {/* NEW: View Button */}
-                    <TouchableOpacity onPress={() => handleViewLead(item)} style={styles.iconBtn}>
-                      <Eye size={18} color="#CCC" />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleEditLead(item)} style={styles.iconBtn}>
-                      <Edit2 size={18} color={ClientConfig.colors.secondary} />
-                    </TouchableOpacity>
-                    <TouchableOpacity onPress={() => handleDeleteLead(item.id)} style={styles.iconBtn}>
-                      <Trash2 size={18} color="red" />
-                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleViewLead(item)} style={styles.iconBtn}><Eye size={18} color="#CCC" /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleEditLead(item)} style={styles.iconBtn}><Edit2 size={18} color={ClientConfig.colors.secondary} /></TouchableOpacity>
+                    <TouchableOpacity onPress={() => handleDeleteLead(item.id)} style={styles.iconBtn}><Trash2 size={18} color="red" /></TouchableOpacity>
                   </View>
                 )}
               </TouchableOpacity>
@@ -269,74 +240,13 @@ export default function AdminDashboard() {
 
       {/* MODALS */}
       <Modal visible={isParamEditModalOpen} animationType="fade" transparent><View style={styles.centerModalOverlay}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={styles.centerModalContainer}><View style={styles.centerModalContent}><Text style={styles.modalTitle}>Edit Parameter</Text><TextInput style={[styles.input, {marginTop:15}]} value={editingParam?.current} onChangeText={t=>setEditingParam(p=>({...p, current:t}))} autoFocus /><View style={styles.modalButtons}><TouchableOpacity onPress={()=>setIsParamEditModalOpen(false)} style={[styles.btn, styles.cancelBtn]}><Text style={{color:'#333'}}>Cancel</Text></TouchableOpacity><TouchableOpacity onPress={saveParamEdit} style={[styles.btn, styles.saveBtn]}><Text style={{color:'#FFF', fontWeight:'bold'}}>Update</Text></TouchableOpacity></View></View></KeyboardAvoidingView></View></Modal>
-      <Modal visible={isModalOpen} animationType="slide" presentationStyle="pageSheet"><SafeAreaView style={styles.modal}><View style={styles.modalHeader}><Text style={styles.modalTitle}>{editingId ? "Edit Fragrance" : "New Fragrance"}</Text><TouchableOpacity onPress={()=>confirmExit(()=>{setIsModalOpen(false);resetForm();})}><X size={24} color="#333" /></TouchableOpacity></View><ScrollView style={styles.formScroll} contentContainerStyle={{paddingBottom:80}}><Text style={styles.label}>Basic Info</Text><TextInput style={styles.input} placeholder="Name" value={newName} onChangeText={setNewName} /><SearchableMultiSelect label="Vendor" options={metadata.vendors} selected={newVendor} onSelectionChange={setNewVendor} onAddNew={v=>handleAddNewMeta('vendors',v)} single={true} /><Text style={styles.label}>Description</Text><TextInput style={[styles.input,{height:80}]} multiline value={newDescription} onChangeText={setNewDescription} />
-      
-      {/* Shelf Location Input */}
-      <Text style={styles.label}>Location</Text>
-      <View style={{flexDirection:'row', alignItems:'center', marginBottom:15}}>
-        <MapPin size={20} color="#666" style={{marginRight:10}} />
-        <TextInput style={[styles.input, {marginBottom:0, flex:1}]} placeholder="e.g. Wall A, Shelf 2" value={newShelfLocation} onChangeText={setNewShelfLocation} />
-      </View>
-
-      <View style={[styles.settingRow, {backgroundColor:'transparent', padding:0, marginVertical:5}]}><Text style={styles.label}>In Stock?</Text><Switch value={newInStock} onValueChange={setNewInStock} trackColor={{false: '#666', true: ClientConfig.colors.secondary}} /></View><Text style={styles.label}>Gender</Text><View style={styles.chipRow}>{['masculine','feminine','unisex'].map(g=><SelectionChip key={g} label={g} value={g} current={newGender} onSelect={setNewGender} />)}</View><Text style={styles.label}>Intensity</Text><View style={styles.chipRow}>{['light','medium','strong'].map(i=><SelectionChip key={i} label={i} value={i} current={newIntensity} onSelect={setNewIntensity} />)}</View><View style={styles.divider}/><Text style={styles.sectionHeader}>Pyramid</Text><SearchableMultiSelect label="Top" options={metadata.notes} selected={newNotesTop} onSelectionChange={setNewNotesTop} onAddNew={v=>handleAddNewMeta('notes',v)} /><SearchableMultiSelect label="Heart" options={metadata.notes} selected={newNotesHeart} onSelectionChange={setNewNotesHeart} onAddNew={v=>handleAddNewMeta('notes',v)} /><SearchableMultiSelect label="Base" options={metadata.notes} selected={newNotesBase} onSelectionChange={setNewNotesBase} onAddNew={v=>handleAddNewMeta('notes',v)} /><View style={styles.divider}/><Text style={styles.sectionHeader}>Tags</Text><SearchableMultiSelect label="Occasion" options={metadata.occasions} selected={newOccasion} onSelectionChange={setNewOccasion} onAddNew={v=>handleAddNewMeta('occasions',v)} /><SearchableMultiSelect label="Personality" options={metadata.personalities} selected={newPersonality} onSelectionChange={setNewPersonality} onAddNew={v=>handleAddNewMeta('personalities',v)} /><View style={styles.modalButtons}><TouchableOpacity onPress={()=>confirmExit(()=>{setIsModalOpen(false);resetForm()})} style={[styles.btn, styles.cancelBtn]}><Text>Cancel</Text></TouchableOpacity><TouchableOpacity onPress={handleSave} style={[styles.btn, styles.saveBtn]}><Text style={{color:'#FFF', fontWeight:'bold'}}>Save</Text></TouchableOpacity></View></ScrollView></SafeAreaView></Modal>
-      <Modal visible={isQuizListModalOpen} animationType="slide" presentationStyle="pageSheet"><SafeAreaView style={styles.modal}><View style={styles.modalHeader}><Text style={styles.modalTitle}>{currentQuiz?.id ? "Edit Quiz" : "New Quiz"}</Text><TouchableOpacity onPress={()=>confirmExit(()=>setIsQuizListModalOpen(false))}><X size={24} color="#333" /></TouchableOpacity></View><ScrollView style={styles.formScroll}><Text style={styles.label}>Quiz Title</Text><TextInput style={styles.input} value={currentQuiz?.title} onChangeText={t=>setCurrentQuiz({...currentQuiz, title: t})} placeholder="Title" /><Text style={styles.label}>Description</Text><TextInput style={styles.input} value={currentQuiz?.description} onChangeText={t=>setCurrentQuiz({...currentQuiz, description: t})} placeholder="Desc" /><View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginVertical: 10}}><Text style={styles.label}>Questions ({currentQuiz?.questions?.length || 0})</Text><TouchableOpacity onPress={()=>setIsReordering(!isReordering)}><Text style={{color: isReordering ? 'blue' : '#666', fontWeight:'bold'}}>{isReordering ? 'Done Reordering' : 'Reorder'}</Text></TouchableOpacity></View>{currentQuiz?.questions?.map((q, index) => (<View key={index} style={styles.optionRow}><View style={{flex: 1}}><Text style={{fontWeight:'bold'}}>Q{index + 1}. {q.question}</Text><Text style={{fontSize: 12, color: '#666'}}>{q.type} • {q.options.length} options</Text></View>{isReordering ? (<View style={{flexDirection:'row'}}><TouchableOpacity onPress={() => moveQuestion(index, 'up')} style={{padding:5}}><ArrowUp size={20} color={index === 0 ? '#EEE' : '#333'} /></TouchableOpacity><TouchableOpacity onPress={() => moveQuestion(index, 'down')} style={{padding:5}}><ArrowDown size={20} color={index === currentQuiz?.questions?.length - 1 ? '#EEE' : '#333'} /></TouchableOpacity></View>) : (<View style={{flexDirection:'row'}}><TouchableOpacity onPress={() => handleEditQuestion(q, index)} style={{padding:5}}><Edit2 size={18} color={ClientConfig.colors.secondary} /></TouchableOpacity><TouchableOpacity onPress={() => deleteQuestionFromQuiz(index)} style={{padding:5}}><Trash2 size={18} color="red" /></TouchableOpacity></View>)}</View>))}<TouchableOpacity onPress={handleAddQuestion} style={[styles.btn, styles.saveBtn, {backgroundColor: '#444', marginTop: 10}]}><Plus size={18} color="#FFF" style={{marginRight:5}} /><Text style={{color:'#FFF'}}>Add Question</Text></TouchableOpacity><View style={{height: 100}} /></ScrollView><View style={[styles.modalButtons, {padding: 20, backgroundColor: '#FFF'}]}><TouchableOpacity onPress={()=>confirmExit(()=>setIsQuizListModalOpen(false))} style={[styles.btn, styles.cancelBtn]}><Text style={{color:'#333'}}>Cancel</Text></TouchableOpacity><TouchableOpacity onPress={handleSaveQuiz} style={[styles.btn, styles.saveBtn]}><Text style={{color:'#FFF', fontWeight:'bold'}}>Save Quiz</Text></TouchableOpacity></View></SafeAreaView></Modal>
-      {/* Question Modal */}
+      <Modal visible={isModalOpen} animationType="slide" presentationStyle="pageSheet"><SafeAreaView style={styles.modal}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={{flex:1}}><View style={styles.modalHeader}><Text style={styles.modalTitle}>{editingId ? "Edit Fragrance" : "New Fragrance"}</Text><TouchableOpacity onPress={()=>confirmExit(()=>{setIsModalOpen(false);resetForm();})}><X size={24} color="#333" /></TouchableOpacity></View><ScrollView style={styles.formScroll} contentContainerStyle={{paddingBottom:80}}><Text style={styles.label}>Basic Info</Text><TextInput style={styles.input} placeholder="Name" value={newName} onChangeText={setNewName} /><SearchableMultiSelect label="Vendor" options={metadata.vendors} selected={newVendor} onSelectionChange={setNewVendor} onAddNew={v=>handleAddNewMeta('vendors',v)} single={true} /><Text style={styles.label}>Description</Text><TextInput style={[styles.input,{height:80}]} multiline value={newDescription} onChangeText={setNewDescription} />
+      <Text style={styles.label}>Location</Text><View style={{flexDirection:'row', alignItems:'center', marginBottom:15}}><MapPin size={20} color="#666" style={{marginRight:10}} /><TextInput style={[styles.input, {marginBottom:0, flex:1}]} placeholder="e.g. Wall A, Shelf 2" value={newShelfLocation} onChangeText={setNewShelfLocation} /></View><View style={[styles.settingRow, {backgroundColor:'transparent', padding:0, marginVertical:5}]}><Text style={styles.label}>In Stock?</Text><Switch value={newInStock} onValueChange={setNewInStock} trackColor={{false: '#666', true: ClientConfig.colors.secondary}} /></View><Text style={styles.label}>Gender</Text><View style={styles.chipRow}>{['masculine','feminine','unisex'].map(g=><SelectionChip key={g} label={g} value={g} current={newGender} onSelect={setNewGender} />)}</View><Text style={styles.label}>Intensity</Text><View style={styles.chipRow}>{['light','medium','strong'].map(i=><SelectionChip key={i} label={i} value={i} current={newIntensity} onSelect={setNewIntensity} />)}</View><View style={styles.divider}/><Text style={styles.sectionHeader}>Pyramid</Text><SearchableMultiSelect label="Top" options={metadata.notes} selected={newNotesTop} onSelectionChange={setNewNotesTop} onAddNew={v=>handleAddNewMeta('notes',v)} /><SearchableMultiSelect label="Heart" options={metadata.notes} selected={newNotesHeart} onSelectionChange={setNewNotesHeart} onAddNew={v=>handleAddNewMeta('notes',v)} /><SearchableMultiSelect label="Base" options={metadata.notes} selected={newNotesBase} onSelectionChange={setNewNotesBase} onAddNew={v=>handleAddNewMeta('notes',v)} /><View style={styles.divider}/><Text style={styles.sectionHeader}>Tags</Text><SearchableMultiSelect label="Occasion" options={metadata.occasions} selected={newOccasion} onSelectionChange={setNewOccasion} onAddNew={v=>handleAddNewMeta('occasions',v)} /><SearchableMultiSelect label="Personality" options={metadata.personalities} selected={newPersonality} onSelectionChange={setNewPersonality} onAddNew={v=>handleAddNewMeta('personalities',v)} /><View style={styles.modalButtons}><TouchableOpacity onPress={()=>confirmExit(()=>{setIsModalOpen(false);resetForm()})} style={[styles.btn, styles.cancelBtn]}><Text>Cancel</Text></TouchableOpacity><TouchableOpacity onPress={handleSave} style={[styles.btn, styles.saveBtn]}><Text style={{color:'#FFF', fontWeight:'bold'}}>Save</Text></TouchableOpacity></View></ScrollView></KeyboardAvoidingView></SafeAreaView></Modal>
+      <Modal visible={isQuizListModalOpen} animationType="slide" presentationStyle="pageSheet"><SafeAreaView style={styles.modal}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={{flex:1}}><View style={styles.modalHeader}><Text style={styles.modalTitle}>{currentQuiz?.id ? "Edit Quiz" : "New Quiz"}</Text><TouchableOpacity onPress={()=>confirmExit(()=>setIsQuizListModalOpen(false))}><X size={24} color="#333" /></TouchableOpacity></View><ScrollView style={styles.formScroll}><Text style={styles.label}>Quiz Title</Text><TextInput style={styles.input} value={currentQuiz?.title} onChangeText={t=>setCurrentQuiz({...currentQuiz, title: t})} placeholder="Title" /><Text style={styles.label}>Description</Text><TextInput style={styles.input} value={currentQuiz?.description} onChangeText={t=>setCurrentQuiz({...currentQuiz, description: t})} placeholder="Desc" /><View style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', marginVertical: 10}}><Text style={styles.label}>Questions ({currentQuiz?.questions?.length || 0})</Text><TouchableOpacity onPress={()=>setIsReordering(!isReordering)}><Text style={{color: isReordering ? 'blue' : '#666', fontWeight:'bold'}}>{isReordering ? 'Done Reordering' : 'Reorder'}</Text></TouchableOpacity></View>{currentQuiz?.questions?.map((q, index) => (<View key={index} style={styles.optionRow}><View style={{flex: 1}}><Text style={{fontWeight:'bold'}}>Q{index + 1}. {q.question}</Text><Text style={{fontSize: 12, color: '#666'}}>{q.type} • {q.options.length} options</Text></View>{isReordering ? (<View style={{flexDirection:'row'}}><TouchableOpacity onPress={() => moveQuestion(index, 'up')} style={{padding:5}}><ArrowUp size={20} color={index === 0 ? '#EEE' : '#333'} /></TouchableOpacity><TouchableOpacity onPress={() => moveQuestion(index, 'down')} style={{padding:5}}><ArrowDown size={20} color={index === currentQuiz?.questions?.length - 1 ? '#EEE' : '#333'} /></TouchableOpacity></View>) : (<View style={{flexDirection:'row'}}><TouchableOpacity onPress={() => handleEditQuestion(q, index)} style={{padding:5}}><Edit2 size={18} color={ClientConfig.colors.secondary} /></TouchableOpacity><TouchableOpacity onPress={() => deleteQuestionFromQuiz(index)} style={{padding:5}}><Trash2 size={18} color="red" /></TouchableOpacity></View>)}</View>))}<TouchableOpacity onPress={handleAddQuestion} style={[styles.btn, styles.saveBtn, {backgroundColor: '#444', marginTop: 10}]}><Plus size={18} color="#FFF" style={{marginRight:5}} /><Text style={{color:'#FFF'}}>Add Question</Text></TouchableOpacity><View style={{height: 100}} /></ScrollView><View style={[styles.modalButtons, {padding: 20, backgroundColor: '#FFF'}]}><TouchableOpacity onPress={()=>confirmExit(()=>setIsQuizListModalOpen(false))} style={[styles.btn, styles.cancelBtn]}><Text style={{color:'#333'}}>Cancel</Text></TouchableOpacity><TouchableOpacity onPress={handleSaveQuiz} style={[styles.btn, styles.saveBtn]}><Text style={{color:'#FFF', fontWeight:'bold'}}>Save Quiz</Text></TouchableOpacity></View></KeyboardAvoidingView></SafeAreaView></Modal>
       <Modal visible={isQuestionModalOpen} animationType="slide"><SafeAreaView style={styles.modal}><View style={styles.modalHeader}><Text style={styles.modalTitle}>Edit Question</Text><TouchableOpacity onPress={()=>setIsQuestionModalOpen(false)}><X size={24} color="#333" /></TouchableOpacity></View><ScrollView style={styles.formScroll}>{editingQuestion && (<><Text style={styles.label}>Question Text</Text><TextInput style={styles.input} value={editingQuestion.question} onChangeText={t=>setEditingQuestion({...editingQuestion, question: t})} /><Text style={styles.label}>Type</Text><View style={styles.chipRow}>{['single', 'multiple'].map(t => (<SelectionChip key={t} label={t} value={t} current={editingQuestion.type} onSelect={v => setEditingQuestion({...editingQuestion, type: v})} />))}</View><Text style={styles.label}>Maps To Category</Text><View style={[styles.chipRow, {flexWrap:'wrap'}]}>{['personality', 'occasion', 'notes', 'gender', 'intensity'].map(c => (<SelectionChip key={c} label={c} value={c} current={editingQuestion.categoryMatch} onSelect={v => setEditingQuestion({...editingQuestion, categoryMatch: v})} />))}</View><View style={styles.divider} /><Text style={styles.sectionHeader}>Options</Text>{tempOptions.map((opt, idx) => (<View key={idx} style={styles.optionRow}><View style={{flex: 1}}><Text style={{fontWeight: 'bold'}}>{opt.label}</Text><Text style={{fontSize: 12, color: '#666'}}>Maps to: {opt.value}</Text></View><TouchableOpacity onPress={() => handleEditOption(idx)} style={{padding: 5}}><Edit2 size={18} color="#666" /></TouchableOpacity><TouchableOpacity onPress={() => handleRemoveOption(idx)} style={{padding: 5}}><Trash2 size={18} color="red" /></TouchableOpacity></View>))}<View style={styles.addOptionBox}><Text style={styles.label}>{editingOptionIndex !== null ? "Edit Option" : "Add Option"}</Text><SearchableMultiSelect label={`Select Matching ${getMetadataForQuestion(editingQuestion).label}`} options={getMetadataForQuestion(editingQuestion).list} selected={newOptionValue} onSelectionChange={setNewOptionValue} single={true} placeholder="Search tags..." /><Text style={styles.label}>Display Label</Text><TextInput style={styles.input} placeholder="e.g. 'I like to party'" value={newOptionLabel} onChangeText={setNewOptionLabel} /><View style={{flexDirection:'row', gap:10}}>{editingOptionIndex !== null && <TouchableOpacity onPress={handleCancelOptionEdit} style={[styles.btn, styles.cancelBtn]}><Text>Cancel</Text></TouchableOpacity>}<TouchableOpacity onPress={handleAddOption} style={[styles.btn, styles.saveBtn]}><Text style={{color:'#FFF'}}>{editingOptionIndex !== null ? "Update" : "Add"}</Text></TouchableOpacity></View></View></>)}<View style={{height: 100}} /></ScrollView><View style={[styles.modalButtons, {padding: 20, backgroundColor: '#FFF'}]}><TouchableOpacity onPress={saveQuestionToQuiz} style={[styles.btn, styles.saveBtn]}><Text style={{color:'#FFF', fontWeight:'bold'}}>Done</Text></TouchableOpacity></View></SafeAreaView></Modal>
-      {/* Lead Modal */}
-      <Modal visible={isLeadModalOpen} animationType="slide" presentationStyle="pageSheet"><SafeAreaView style={styles.modal}><View style={styles.modalHeader}><Text style={styles.modalTitle}>{editingLeadId ? "Edit Lead" : "New Lead"}</Text><TouchableOpacity onPress={()=>confirmExit(()=>{setIsLeadModalOpen(false);})}><X size={24} color="#333" /></TouchableOpacity></View><ScrollView style={styles.formScroll}><Text style={styles.label}>First Name</Text><TextInput style={styles.input} value={leadForm.firstName} onChangeText={t=>setLeadForm({...leadForm, firstName: t})} /><Text style={styles.label}>Last Name</Text><TextInput style={styles.input} value={leadForm.lastName} onChangeText={t=>setLeadForm({...leadForm, lastName: t})} /><Text style={styles.label}>Email</Text><TextInput style={styles.input} value={leadForm.email} onChangeText={t=>setLeadForm({...leadForm, email: t})} keyboardType="email-address" autoCapitalize="none" /><Text style={styles.label}>Phone</Text><TextInput style={styles.input} value={leadForm.phone} onChangeText={t=>setLeadForm({...leadForm, phone: t})} keyboardType="phone-pad" /><Text style={styles.label}>Quiz Result (Optional)</Text><TextInput style={styles.input} value={leadForm.quizResult} onChangeText={t=>setLeadForm({...leadForm, quizResult: t})} placeholder="e.g. Noir Elegance" /><TouchableOpacity onPress={saveLead} style={[styles.btn, styles.saveBtn, {marginTop: 20}]}><Text style={{color:'#FFF', fontWeight: 'bold'}}>{editingLeadId ? "Update Lead" : "Save Lead"}</Text></TouchableOpacity></ScrollView></SafeAreaView></Modal>
-
-      {/* NEW: LEAD DETAIL MODAL */}
-      <Modal visible={isLeadDetailOpen} animationType="slide" presentationStyle="pageSheet">
-        <SafeAreaView style={styles.modal}>
-          <View style={styles.modalHeader}>
-             <Text style={styles.modalTitle}>Client Profile</Text>
-             <TouchableOpacity onPress={() => setIsLeadDetailOpen(false)}><X size={24} color="#333" /></TouchableOpacity>
-          </View>
-          <ScrollView style={styles.formScroll}>
-             {currentLead && (
-               <>
-                  <View style={{alignItems:'center', marginBottom:20}}>
-                    <View style={{width:80, height:80, borderRadius:40, backgroundColor: ClientConfig.colors.secondary, justifyContent:'center', alignItems:'center', marginBottom:10}}>
-                        <Text style={{fontSize:24, fontWeight:'bold', color:ClientConfig.colors.primary}}>{currentLead.firstName[0]}{currentLead.lastName[0]}</Text>
-                    </View>
-                    <Text style={{fontSize:22, fontWeight:'bold', color:'#333'}}>{currentLead.firstName} {currentLead.lastName}</Text>
-                    <Text style={{fontSize:14, color:'#666'}}>{currentLead.email}</Text>
-                    {currentLead.phone && <Text style={{fontSize:14, color:'#666'}}>{currentLead.phone}</Text>}
-                  </View>
-                  
-                  <View style={styles.divider} />
-                  <Text style={styles.sectionHeader}>Coupons</Text>
-                  {currentLead.coupons && currentLead.coupons.length > 0 ? currentLead.coupons.map((c, i) => (
-                    <View key={i} style={{flexDirection:'row', justifyContent:'space-between', backgroundColor:'#EFEFEF', padding:15, borderRadius:8, marginBottom:8}}>
-                        <View style={{flexDirection:'row', gap:10, alignItems:'center'}}>
-                           <Ticket size={20} color={ClientConfig.colors.secondary} />
-                           <View>
-                               <Text style={{fontWeight:'bold'}}>{c.code}</Text>
-                               <Text style={{fontSize:12, color:'#666'}}>Expires: {c.expiryDate}</Text>
-                           </View>
-                        </View>
-                        <Text style={{fontWeight:'bold', color:'green', textTransform:'uppercase'}}>{c.status}</Text>
-                    </View>
-                  )) : <Text style={{color:'#999', fontStyle:'italic'}}>No coupons available.</Text>}
-
-                  <View style={styles.divider} />
-                  <Text style={styles.sectionHeader}>Favorites</Text>
-                  {leadWishlistItems.length > 0 ? leadWishlistItems.map((item, i) => (
-                    <View key={i} style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', borderBottomWidth:1, borderBottomColor:'#EEE', paddingVertical:10}}>
-                        <View>
-                            <Text style={{fontWeight:'bold'}}>{item.name}</Text>
-                            <Text style={{fontSize:12, color:'#666'}}>{item.vendor}</Text>
-                        </View>
-                        <Heart size={18} color="red" fill="red" />
-                    </View>
-                  )) : <Text style={{color:'#999', fontStyle:'italic'}}>No favorites saved.</Text>}
-                  <View style={{height: 50}} />
-               </>
-             )}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
-
+      <Modal visible={isLeadModalOpen} animationType="slide" presentationStyle="pageSheet"><SafeAreaView style={styles.modal}><KeyboardAvoidingView behavior={Platform.OS==='ios'?'padding':'height'} style={{flex:1}}><View style={styles.modalHeader}><Text style={styles.modalTitle}>{editingLeadId ? "Edit Lead" : "New Lead"}</Text><TouchableOpacity onPress={()=>confirmExit(()=>{setIsLeadModalOpen(false);})}><X size={24} color="#333" /></TouchableOpacity></View><ScrollView style={styles.formScroll}><Text style={styles.label}>First Name</Text><TextInput style={styles.input} value={leadForm.firstName} onChangeText={t=>setLeadForm({...leadForm, firstName: t})} /><Text style={styles.label}>Last Name</Text><TextInput style={styles.input} value={leadForm.lastName} onChangeText={t=>setLeadForm({...leadForm, lastName: t})} /><Text style={styles.label}>Email</Text><TextInput style={styles.input} value={leadForm.email} onChangeText={t=>setLeadForm({...leadForm, email: t})} keyboardType="email-address" autoCapitalize="none" /><Text style={styles.label}>Phone</Text><TextInput style={styles.input} value={leadForm.phone} onChangeText={t=>setLeadForm({...leadForm, phone: t})} keyboardType="phone-pad" /><Text style={styles.label}>Quiz Result (Optional)</Text><TextInput style={styles.input} value={leadForm.quizResult} onChangeText={t=>setLeadForm({...leadForm, quizResult: t})} placeholder="e.g. Noir Elegance" /><TouchableOpacity onPress={saveLead} style={[styles.btn, styles.saveBtn, {marginTop: 20}]}><Text style={{color:'#FFF', fontWeight: 'bold'}}>{editingLeadId ? "Update Lead" : "Save Lead"}</Text></TouchableOpacity></ScrollView></KeyboardAvoidingView></SafeAreaView></Modal>
+      <Modal visible={isLeadDetailOpen} animationType="slide" presentationStyle="pageSheet"><SafeAreaView style={styles.modal}><View style={styles.modalHeader}><Text style={styles.modalTitle}>Client Profile</Text><TouchableOpacity onPress={() => setIsLeadDetailOpen(false)}><X size={24} color="#333" /></TouchableOpacity></View><ScrollView style={styles.formScroll}>{currentLead && (<><View style={{alignItems:'center', marginBottom:20}}><View style={{width:80, height:80, borderRadius:40, backgroundColor: ClientConfig.colors.secondary, justifyContent:'center', alignItems:'center', marginBottom:10}}><Text style={{fontSize:24, fontWeight:'bold', color:ClientConfig.colors.primary}}>{currentLead.firstName[0]}{currentLead.lastName[0]}</Text></View><Text style={{fontSize:22, fontWeight:'bold', color:'#333'}}>{currentLead.firstName} {currentLead.lastName}</Text><Text style={{fontSize:14, color:'#666'}}>{currentLead.email}</Text>{currentLead.phone && <Text style={{fontSize:14, color:'#666'}}>{currentLead.phone}</Text>}</View><View style={styles.divider} /><Text style={styles.sectionHeader}>Coupons</Text>{currentLead.coupons && currentLead.coupons.length > 0 ? currentLead.coupons.map((c, i) => (<View key={i} style={{flexDirection:'row', justifyContent:'space-between', backgroundColor:'#EFEFEF', padding:15, borderRadius:8, marginBottom:8}}><View style={{flexDirection:'row', gap:10, alignItems:'center'}}><Ticket size={20} color={ClientConfig.colors.secondary} /><View><Text style={{fontWeight:'bold'}}>{c.code}</Text><Text style={{fontSize:12, color:'#666'}}>Expires: {c.expiryDate}</Text></View></View><Text style={{fontWeight:'bold', color:'green', textTransform:'uppercase'}}>{c.status}</Text></View>)) : <Text style={{color:'#999', fontStyle:'italic'}}>No coupons available.</Text>}<View style={styles.divider} /><Text style={styles.sectionHeader}>Favorites</Text>{leadWishlistItems.length > 0 ? leadWishlistItems.map((item, i) => (<View key={i} style={{flexDirection:'row', justifyContent:'space-between', alignItems:'center', borderBottomWidth:1, borderBottomColor:'#EEE', paddingVertical:10}}><View><Text style={{fontWeight:'bold'}}>{item.name}</Text><Text style={{fontSize:12, color:'#666'}}>{item.vendor}</Text></View><Heart size={18} color="red" fill="red" /></View>)) : <Text style={{color:'#999', fontStyle:'italic'}}>No favorites saved.</Text>}<View style={{height: 50}} /></>)}</ScrollView></SafeAreaView></Modal>
+      
       {(activeTab === 'inventory' || activeTab === 'quizzes' || activeTab === 'leads') && (
         <TouchableOpacity style={styles.fab} onPress={() => { 
           if (activeTab === 'inventory') { resetForm(); setIsModalOpen(true); } 
