@@ -1,10 +1,12 @@
 // @ts-nocheck
 import FragranceCard from '@/components/FragranceCard';
+import Toast from '@/components/Toast';
 import { ClientConfig } from '@/constants/ClientConfig';
+import { LeadsService, SessionStore } from '@/services/Database';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ArrowLeft, Home, RotateCcw, User } from 'lucide-react-native';
-import React from 'react';
-import { FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Alert, FlatList, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 export default function ResultsScreen() {
   const router = useRouter();
@@ -12,16 +14,47 @@ export default function ResultsScreen() {
   
   const recommendations = params.data ? JSON.parse(params.data as string) : [];
   
-  // NEW: Retrieve user session info from params
-  const sessionUser = params.user ? JSON.parse(params.user) : null;
+  // --- GLOBAL SESSION STATE ---
+  const [sessionUser, setSessionUser] = useState<any>(SessionStore.getUser());
+  const [toastMsg, setToastMsg] = useState('');
+  const [showToast, setShowToast] = useState(false);
+  
+  // Listen for session changes globally
+  useEffect(() => {
+    const unsubscribe = SessionStore.subscribe((u) => setSessionUser(u));
+    return () => unsubscribe();
+  }, []);
 
   // Function to pass session data back to quiz screen
   const retakeQuiz = () => {
-    router.replace({
-        pathname: '/quiz',
-        // CRITICAL FIX: Pass the user session so quiz page knows who they are
-        params: { user: sessionUser ? JSON.stringify(sessionUser) : null }
-    });
+    router.replace({ pathname: '/quiz' });
+  };
+
+  // --- HANDLE WISHLIST TOGGLE ---
+  const handleToggleHeart = async (item: any) => {
+    if (!sessionUser || !sessionUser.id) {
+        Alert.alert("Sign In Required", "Please sign in via the Search or Quiz screen to save favorites.");
+        return;
+    }
+    
+    try {
+        const currentWishlist = sessionUser.wishlist || [];
+        const isRemoving = currentWishlist.includes(item.id);
+        
+        await LeadsService.toggleWishlist(sessionUser.id, item.id, currentWishlist);
+        
+        // Show Toast
+        setToastMsg(isRemoving ? `Removed ${item.name} from favorites` : `Added ${item.name} to favorites`);
+        setShowToast(true);
+        
+    } catch (e) {
+        Alert.alert("Error", "Could not update wishlist.");
+    }
+  };
+
+  // Navigation to Product Page
+  const handleProductNavigation = (id: string) => { 
+      router.push(`/product/${id}`); 
   };
 
   return (
@@ -54,12 +87,14 @@ export default function ResultsScreen() {
               vendor={item.vendor}
               notes={item.notes}
               isTopPick={index === 0}
-              // Card onPress is undefined here, but the card itself has logic for navigation
+              onPress={() => handleProductNavigation(item.id)}
+              isFavorite={sessionUser?.wishlist?.includes(item.id)} 
+              onToggleHeart={() => handleToggleHeart(item)}
             />
           )}
           ListFooterComponent={
             <View style={styles.footerContainer}>
-              {/* START OVER: Retake the quiz, passing session back */}
+              {/* START OVER: Retake the quiz */}
               <TouchableOpacity 
                 style={styles.mainButton} 
                 onPress={retakeQuiz}
@@ -79,6 +114,14 @@ export default function ResultsScreen() {
             </View>
           }
         />
+        
+        {/* TOAST NOTIFICATION */}
+        <Toast 
+            message={toastMsg} 
+            visible={showToast} 
+            onHide={() => setShowToast(false)} 
+        />
+
       </SafeAreaView>
     </View>
   );

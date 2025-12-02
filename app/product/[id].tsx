@@ -1,5 +1,6 @@
 // @ts-nocheck
 import NotePyramid from '@/components/NotePyramid';
+import Toast from '@/components/Toast';
 import { ClientConfig } from '@/constants/ClientConfig';
 import { FragranceService, LeadsService, SessionStore } from '@/services/Database';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
@@ -16,6 +17,10 @@ export default function ProductDetailScreen() {
   // USE GLOBAL SESSION
   const [sessionUser, setSessionUser] = useState<any>(SessionStore.getUser());
   
+  // TOAST STATE
+  const [toastMsg, setToastMsg] = useState('');
+  const [showToast, setShowToast] = useState(false);
+
   useEffect(() => {
     const unsubscribe = SessionStore.subscribe((u) => setSessionUser(u));
     return () => unsubscribe();
@@ -29,8 +34,15 @@ export default function ProductDetailScreen() {
     }
     try {
         const currentWishlist = sessionUser.wishlist || [];
+        const isRemoving = currentWishlist.includes(id);
+        
         // This updates the global session store automatically
         await LeadsService.toggleWishlist(sessionUser.id, id as string, currentWishlist);
+        
+        // Show Toast
+        setToastMsg(isRemoving ? `Removed ${product?.name || 'item'} from favorites` : `Added ${product?.name || 'item'} to favorites`);
+        setShowToast(true);
+
     } catch (e) {
         Alert.alert("Error", "Could not update wishlist.");
     }
@@ -116,6 +128,13 @@ export default function ProductDetailScreen() {
           <Text style={styles.btnText}>{product.inStock === false ? "Unavailable" : "Add to Collection"}</Text>
         </TouchableOpacity>
       </View>
+
+      {/* TOAST NOTIFICATION */}
+      <Toast 
+        message={toastMsg} 
+        visible={showToast} 
+        onHide={() => setShowToast(false)} 
+      />
     </View>
   );
 }

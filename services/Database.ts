@@ -64,16 +64,13 @@ export const SessionStore = {
   user: null as Lead | null,
   listeners: [] as Function[],
   
-  // Set user and notify all listening components
   setUser: (u: Lead | null) => {
     SessionStore.user = u;
     SessionStore.listeners.forEach(l => l(u));
   },
   
-  // Get current user
   getUser: () => SessionStore.user,
   
-  // Components subscribe to changes here
   subscribe: (cb: Function) => {
     SessionStore.listeners.push(cb);
     return () => { SessionStore.listeners = SessionStore.listeners.filter(l => l !== cb); }
@@ -228,22 +225,16 @@ export const MetadataService = {
       return DEFAULT_METADATA;
     }
   },
-
   addItem: async (category: string, item: string) => {
     const docRef = doc(db, COLLECTION_METADATA, category);
     const snap = await getDoc(docRef);
-    let values = [];
-    if (snap.exists()) {
-      values = snap.data().values || [];
-    }
+    let values = snap.exists() ? (snap.data().values || []) : [];
     if (!values.includes(item)) {
-      values.push(item);
-      values.sort();
+      values.push(item); values.sort();
       await setDoc(docRef, { values }, { merge: true });
     }
     return values;
   },
-
   removeItem: async (category: string, item: string) => {
     const docRef = doc(db, COLLECTION_METADATA, category);
     const snap = await getDoc(docRef);
@@ -255,7 +246,6 @@ export const MetadataService = {
     }
     return [];
   },
-
   seed: async () => {
     for (const [key, values] of Object.entries(DEFAULT_METADATA)) {
       await setDoc(doc(db, COLLECTION_METADATA, key), { values });
@@ -424,6 +414,8 @@ export const LeadsService = {
       const userDoc = querySnapshot.docs[0];
       const userData = { id: userDoc.id, ...userDoc.data() };
       await updateDoc(doc(db, COLLECTION_LEADS, userDoc.id), { timestamp: new Date() });
+      
+      // GLOBAL UPDATE
       SessionStore.setUser(userData);
       return userData;
     }
@@ -443,6 +435,8 @@ export const LeadsService = {
     const leadData = { ...lead, timestamp: new Date(), wishlist: [], coupons: [newCoupon] };
     const docRef = await addDoc(collection(db, COLLECTION_LEADS), leadData);
     const fullUser = { id: docRef.id, ...leadData };
+    
+    // GLOBAL UPDATE
     SessionStore.setUser(fullUser);
     return fullUser;
   },
@@ -461,6 +455,8 @@ export const LeadsService = {
     ids.forEach(id => { batch.delete(doc(db, COLLECTION_LEADS, id)); });
     await batch.commit();
   },
+  
+  // UPDATED: Handles toggle logic and updates SessionStore
   toggleWishlist: async (leadId: string, fragranceId: string, currentWishlist: string[]) => {
     const docRef = doc(db, COLLECTION_LEADS, leadId);
     let newWishlist = [];
@@ -471,12 +467,16 @@ export const LeadsService = {
       await updateDoc(docRef, { wishlist: arrayUnion(fragranceId) });
       newWishlist = [...currentWishlist, fragranceId];
     }
+    
+    // GLOBAL UPDATE
     const currentUser = SessionStore.getUser();
     if (currentUser && currentUser.id === leadId) {
         SessionStore.setUser({ ...currentUser, wishlist: newWishlist });
     }
+    
     return newWishlist;
   },
+  
   identify: async (info: any) => {
      const exists = await LeadsService.checkExists(info.email);
      if(exists) return await LeadsService.login(info.email);
