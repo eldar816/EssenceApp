@@ -1,9 +1,9 @@
 // @ts-nocheck
 import { ClientConfig } from '@/constants/ClientConfig';
-import { SettingsService } from '@/services/Database';
+import { LeadsService, SessionStore, SettingsService } from '@/services/Database';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ChevronRight, Lock, Search, Settings, Sparkles } from 'lucide-react-native';
-import React, { useState } from 'react';
+import { ChevronRight, Lock, Search, Settings, Sparkles, User } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
 import { Alert, Modal, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 
 export default function HomeScreen() {
@@ -11,8 +11,17 @@ export default function HomeScreen() {
   const [settings, setSettings] = useState({ pinEnabled: false, adminPin: '1234' });
   const [isPinModalVisible, setIsPinModalVisible] = useState(false);
   const [enteredPin, setEnteredPin] = useState('');
+  
+  // SESSION STATE
+  const [sessionUser, setSessionUser] = useState<any>(SessionStore.getUser());
+  const [isLoginModalVisible, setIsLoginModalVisible] = useState(false);
+  const [loginEmail, setLoginEmail] = useState('');
 
-  // Refresh settings every time we visit Home
+  useEffect(() => {
+    const unsubscribe = SessionStore.subscribe((u) => setSessionUser(u));
+    return () => unsubscribe();
+  }, []);
+
   useFocusEffect(
     React.useCallback(() => {
       const load = async () => {
@@ -42,17 +51,49 @@ export default function HomeScreen() {
     }
   };
 
+  const handleProfilePress = () => {
+    if (sessionUser) {
+      router.push('/profile');
+    } else {
+      setIsLoginModalVisible(true);
+    }
+  };
+
+  const handleLogin = async () => {
+    if (!loginEmail.trim()) return;
+    const user = await LeadsService.login(loginEmail.trim().toLowerCase());
+    if (user) {
+      setIsLoginModalVisible(false);
+      setLoginEmail('');
+      router.push('/profile');
+    } else {
+      Alert.alert("Not Found", "No account found with this email.");
+    }
+  };
+
   return (
     <View style={styles.container}>
       
-      {/* VISIBLE ADMIN BUTTON */}
+      {/* ADMIN BUTTON (Hidden/Subtle Top Left) */}
       <TouchableOpacity 
         style={styles.adminButton} 
         onPress={handleAdminPress}
       >
         <Settings size={20} color={ClientConfig.colors.accent} />
-        <Text style={styles.adminText}>ADMIN</Text>
       </TouchableOpacity>
+
+      {/* LOGIN INDICATOR (Top Right - Only shows if logged in) */}
+      {sessionUser && (
+        <TouchableOpacity 
+          style={styles.profileButton} 
+          onPress={() => router.push('/profile')}
+        >
+          <View style={styles.profileButtonInner}>
+             <Text style={styles.profileText}>Hi, {sessionUser.firstName}</Text>
+             <User size={20} color={ClientConfig.colors.accent} />
+          </View>
+        </TouchableOpacity>
+      )}
 
       <View style={styles.homeContent}>
         <View style={styles.logoContainer}>
@@ -77,6 +118,16 @@ export default function HomeScreen() {
             <Text style={styles.secondaryButtonText}>Search Scents</Text>
             <Search size={24} color={ClientConfig.colors.primary} />
           </TouchableOpacity>
+
+          {/* SUBTLE LOGIN INVITATION (Below buttons) */}
+          {!sessionUser && (
+            <TouchableOpacity 
+                style={styles.subtleLoginButton} 
+                onPress={() => setIsLoginModalVisible(true)}
+            >
+                <Text style={styles.subtleLoginText}>Already have a profile? Sign In</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
       <Text style={styles.footerText}>Powered by {ClientConfig.companyName}</Text>
@@ -87,8 +138,6 @@ export default function HomeScreen() {
             <View style={styles.modalContent}>
                 <Lock size={40} color={ClientConfig.colors.secondary} style={{marginBottom: 20}} />
                 <Text style={styles.modalTitle}>Admin Access</Text>
-                <Text style={{color:'#666', marginBottom: 20}}>Enter your security PIN</Text>
-                
                 <TextInput 
                     style={styles.pinInput}
                     keyboardType="numeric"
@@ -99,13 +148,38 @@ export default function HomeScreen() {
                     placeholder="****"
                     autoFocus
                 />
+                <View style={styles.modalButtons}>
+                    <TouchableOpacity onPress={() => setIsPinModalVisible(false)} style={styles.cancelBtn}><Text style={{color:'#333'}}>Cancel</Text></TouchableOpacity>
+                    <TouchableOpacity onPress={verifyPin} style={styles.enterBtn}><Text style={{color:'#FFF', fontWeight:'bold'}}>Enter</Text></TouchableOpacity>
+                </View>
+            </View>
+        </View>
+      </Modal>
+
+      {/* LOGIN MODAL */}
+      <Modal visible={isLoginModalVisible} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+            <View style={styles.modalContent}>
+                <User size={40} color={ClientConfig.colors.secondary} style={{marginBottom: 20}} />
+                <Text style={styles.modalTitle}>Client Sign In</Text>
+                <Text style={{color:'#666', marginBottom: 15, textAlign:'center'}}>Enter your email to access your profile, favorites, and coupons.</Text>
+                
+                <TextInput 
+                    style={styles.input}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={loginEmail}
+                    onChangeText={setLoginEmail}
+                    placeholder="email@example.com"
+                    autoFocus
+                />
 
                 <View style={styles.modalButtons}>
-                    <TouchableOpacity onPress={() => setIsPinModalVisible(false)} style={styles.cancelBtn}>
+                    <TouchableOpacity onPress={() => setIsLoginModalVisible(false)} style={styles.cancelBtn}>
                         <Text style={{color:'#333'}}>Cancel</Text>
                     </TouchableOpacity>
-                    <TouchableOpacity onPress={verifyPin} style={styles.enterBtn}>
-                        <Text style={{color:'#FFF', fontWeight:'bold'}}>Enter</Text>
+                    <TouchableOpacity onPress={handleLogin} style={styles.enterBtn}>
+                        <Text style={{color:'#FFF', fontWeight:'bold'}}>Sign In</Text>
                     </TouchableOpacity>
                 </View>
             </View>
@@ -125,17 +199,28 @@ const styles = StyleSheet.create({
     top: 60, 
     left: 20, 
     zIndex: 100,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+  },
+  profileButton: {
+    position: 'absolute', 
+    top: 60, 
+    right: 20, 
+    zIndex: 100,
+    padding: 10,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderRadius: 20,
+  },
+  profileButtonInner: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    padding: 8,
-    borderRadius: 20,
-    gap: 6
+    gap: 8
   },
-  adminText: {
-    color: ClientConfig.colors.accent, 
+  profileText: {
+    color: ClientConfig.colors.accent,
     fontWeight: 'bold',
-    fontSize: 12
+    fontSize: 14
   },
   homeContent: {
     flex: 1,
@@ -197,6 +282,15 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginRight: 10,
   },
+  subtleLoginButton: {
+      alignItems: 'center',
+      padding: 15,
+  },
+  subtleLoginText: {
+      color: 'rgba(255,255,255,0.5)',
+      fontSize: 14,
+      textDecorationLine: 'underline',
+  },
   footerText: {
     textAlign: 'center',
     color: ClientConfig.colors.accent,
@@ -204,10 +298,11 @@ const styles = StyleSheet.create({
     paddingBottom: 30,
   },
   // Modal Styles
-  modalOverlay: { flex:1, backgroundColor:'rgba(0,0,0,0.8)', justifyContent:'center', alignItems:'center' },
-  modalContent: { backgroundColor:'#FFF', padding:30, borderRadius:20, width:'80%', maxWidth:350, alignItems:'center' },
-  modalTitle: { fontSize:22, fontWeight:'bold', color:'#333', marginBottom:5 },
+  modalOverlay: { flex:1, backgroundColor:'rgba(0,0,0,0.8)', justifyContent:'center', alignItems:'center', padding: 20 },
+  modalContent: { backgroundColor:'#FFF', padding:30, borderRadius:20, width:'100%', maxWidth:350, alignItems:'center' },
+  modalTitle: { fontSize: 22, fontWeight:'bold', color:'#333', marginBottom:5 },
   pinInput: { backgroundColor:'#F0F0F0', fontSize:24, letterSpacing:10, textAlign:'center', width:'100%', padding:15, borderRadius:10, marginBottom:20 },
+  input: { backgroundColor:'#F0F0F0', fontSize:16, width:'100%', padding:15, borderRadius:10, marginBottom:20 },
   modalButtons: { flexDirection:'row', gap:10, width:'100%' },
   cancelBtn: { flex:1, padding:15, backgroundColor:'#EEE', borderRadius:10, alignItems:'center' },
   enterBtn: { flex:1, padding:15, backgroundColor:ClientConfig.colors.secondary, borderRadius:10, alignItems:'center' }

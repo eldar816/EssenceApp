@@ -4,7 +4,7 @@ import Toast from '@/components/Toast';
 import { ClientConfig } from '@/constants/ClientConfig';
 import { FragranceService, LeadsService, SessionStore } from '@/services/Database';
 import { Stack, useLocalSearchParams, useRouter } from 'expo-router';
-import { ArrowLeft, Heart, MapPin, Share2 } from 'lucide-react-native';
+import { ArrowLeft, Heart, MapPin, Share2, User } from 'lucide-react-native';
 import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
@@ -34,22 +34,22 @@ export default function ProductDetailScreen() {
     }
     try {
         const currentWishlist = sessionUser.wishlist || [];
-        const isRemoving = currentWishlist.includes(id);
+        // Explicitly define the ID to use for comparison
+        const productId = Array.isArray(id) ? id[0] : id;
+        const isRemoving = currentWishlist.includes(productId);
         
         // This updates the global session store automatically
-        await LeadsService.toggleWishlist(sessionUser.id, id as string, currentWishlist);
+        await LeadsService.toggleWishlist(sessionUser.id, productId, currentWishlist);
         
         // Show Toast
         setToastMsg(isRemoving ? `Removed ${product?.name || 'item'} from favorites` : `Added ${product?.name || 'item'} to favorites`);
         setShowToast(true);
 
     } catch (e) {
+        console.error("Wishlist Toggle Error:", e);
         Alert.alert("Error", "Could not update wishlist.");
     }
   };
-
-  // Check if current item is in wishlist
-  const isFavorite = sessionUser?.wishlist?.includes(id);
 
   useEffect(() => {
     if (!id) return;
@@ -67,6 +67,13 @@ export default function ProductDetailScreen() {
     };
     loadProduct();
   }, [id]);
+
+  // Check if current item is in wishlist, handling potential array/string ID mismatches
+  const isFavorite = React.useMemo(() => {
+      if (!sessionUser?.wishlist || !id) return false;
+      const productId = Array.isArray(id) ? id[0] : id;
+      return sessionUser.wishlist.includes(productId);
+  }, [sessionUser, id]);
 
   if (loading) {
     return <View style={styles.center}><Stack.Screen options={{ headerShown: false }} /><ActivityIndicator size="large" color="#FFF" /></View>;
@@ -89,7 +96,19 @@ export default function ProductDetailScreen() {
       <Stack.Screen options={{ headerShown: false }} />
       <ScrollView contentContainerStyle={{paddingBottom: 80}}>
         <View style={styles.hero}>
-          <TouchableOpacity onPress={() => router.back()} style={styles.backButton}><ArrowLeft size={24} color={ClientConfig.colors.primary} /></TouchableOpacity>
+          <View style={styles.navRow}>
+            <TouchableOpacity onPress={() => router.back()} style={styles.navButton}>
+                <ArrowLeft size={24} color={ClientConfig.colors.primary} />
+            </TouchableOpacity>
+            {/* USER INDICATOR */}
+            {sessionUser && (
+                <View style={styles.userBadge}>
+                    <Text style={styles.userText}>Hi, {sessionUser.firstName}</Text>
+                    <User size={16} color={ClientConfig.colors.primary} />
+                </View>
+            )}
+          </View>
+          
           <View style={styles.visualContainer}>
             <View style={styles.placeholderCircle}><Text style={styles.initials}>{product.name ? product.name.substring(0, 2) : "??"}</Text></View>
           </View>
@@ -143,7 +162,12 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#1a1a2e' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   hero: { height: 350, backgroundColor: '#222', justifyContent: 'center', alignItems: 'center' },
-  backButton: { position: 'absolute', top: 60, left: 20, zIndex: 10, backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 20 },
+  
+  navRow: { position: 'absolute', top: 60, left: 20, right: 20, zIndex: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  navButton: { backgroundColor: 'rgba(255,255,255,0.2)', padding: 8, borderRadius: 20 },
+  userBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.9)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, gap: 6 },
+  userText: { color: ClientConfig.colors.primary, fontWeight: 'bold', fontSize: 12 },
+
   visualContainer: { alignItems: 'center', justifyContent: 'center' },
   placeholderCircle: { width: 200, height: 200, borderRadius: 100, backgroundColor: ClientConfig.colors.secondary, justifyContent: 'center', alignItems: 'center', shadowColor: "#000", shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20, elevation: 10 },
   initials: { fontSize: 60, color: ClientConfig.colors.primary, fontWeight: 'bold' },
